@@ -57,12 +57,20 @@ jobs:
         run: |
           $notes = "BestAppearance $env:VERSION, automatically built from commit $env:GITHUB_SHA."
 
+          $releaseExists = $true
           gh release view $env:TAG 2>$null
-          if ($LASTEXITCODE -eq 0) {
+          if ($LASTEXITCODE -ne 0) {
+            $releaseExists = $false
+          }
+
+          # A missing release is expected on the first run. Reset the native exit code
+          # so PowerShell does not fail the step after the release is created.
+          $global:LASTEXITCODE = 0
+
+          if ($releaseExists) {
             gh release upload $env:TAG .\BestAppearance.exe --clobber
             gh release edit $env:TAG --title "BestAppearance $env:VERSION" --notes $notes --target $env:GITHUB_SHA
           }
           else {
             gh release create $env:TAG .\BestAppearance.exe --title "BestAppearance $env:VERSION" --notes $notes --target $env:GITHUB_SHA
           }
-
