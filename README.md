@@ -52,3 +52,5 @@ This project intentionally targets **.NET Framework 4.8.1** rather than modern .
 
 See [LICENSE.txt](LICENSE.txt).
 
+
+

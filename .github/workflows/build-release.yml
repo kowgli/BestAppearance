@@ -1,0 +1,67 @@
+name: Build and release
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build
+        run: msbuild .\BestAppearance\BestAppearance.csproj /t:Rebuild /p:Configuration=Release /p:Platform=AnyCPU
+
+      - name: Read assembly version
+        id: version
+        shell: pwsh
+        run: |
+          $assemblyInfo = Get-Content .\BestAppearance\Properties\AssemblyInfo.cs -Raw
+          $match = [regex]::Match($assemblyInfo, 'AssemblyVersion\("([^"]+)"\)')
+
+          if (-not $match.Success) {
+            throw "AssemblyVersion was not found in AssemblyInfo.cs."
+          }
+
+          $version = $match.Groups[1].Value
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=v$version" >> $env:GITHUB_OUTPUT
+
+      - name: Prepare release file
+        shell: pwsh
+        run: Copy-Item .\BestAppearance\bin\Release\BestAppearance.exe .\BestAppearance.exe
+
+      - name: Publish workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BestAppearance-${{ steps.version.outputs.version }}
+          path: BestAppearance.exe
+
+      - name: Create versioned release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          $notes = "BestAppearance $env:VERSION, automatically built from commit $env:GITHUB_SHA."
+
+          gh release view $env:TAG 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:TAG .\BestAppearance.exe --clobber
+            gh release edit $env:TAG --title "BestAppearance $env:VERSION" --notes $notes --target $env:GITHUB_SHA
+          }
+          else {
+            gh release create $env:TAG .\BestAppearance.exe --title "BestAppearance $env:VERSION" --notes $notes --target $env:GITHUB_SHA
+          }
