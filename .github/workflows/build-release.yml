@@ -15,10 +15,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up MSBuild
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@v3
 
       - name: Build
         run: msbuild .\BestAppearance\BestAppearance.csproj /t:Rebuild /p:Configuration=Release /p:Platform=AnyCPU
@@ -43,7 +43,7 @@ jobs:
         run: Copy-Item .\BestAppearance\bin\Release\BestAppearance.exe .\BestAppearance.exe
 
       - name: Publish workflow artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: BestAppearance-${{ steps.version.outputs.version }}
           path: BestAppearance.exe
@@ -65,3 +65,4 @@ jobs:
           else {
             gh release create $env:TAG .\BestAppearance.exe --title "BestAppearance $env:VERSION" --notes $notes --target $env:GITHUB_SHA
           }
+
